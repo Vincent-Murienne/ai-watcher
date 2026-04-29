@@ -3,7 +3,7 @@ import { RawArticle } from "./watcher.js";
 // --- Types -------------------------------------------------------------------
 
 export interface SummarizedArticle {
-  domain: "IA" | "Web Dev" | "DevOps" | "DevSecOps";
+  domain: "IA" | "Cybersecurite";
   title: string;
   link: string;
   source: string;

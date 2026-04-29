@@ -1,6 +1,7 @@
 import Parser from "rss-parser";
 import * as fs from "fs";
 import * as crypto from "crypto";
+import { SummarizedArticle } from "./summarizer";
 
 // --- Types -------------------------------------------------------------------
 
@@ -10,62 +11,49 @@ export interface RawArticle {
   pubDate: string;
   summary: string;
   source: string;
-  domain: "IA" | "Web Dev" | "DevOps" | "DevSecOps";
+  domain: SummarizedArticle["domain"];
 }
 
 // --- Sources RSS --------------------------------------------------------------
-// Toutes les URLs ont ete verifiees. Certains labs IA (Anthropic, Mistral, Meta)
-// ne publient pas de flux RSS officiel : on utilise des aggregateurs tiers
-// maintenus par la communaute (github.com/Olshansk/rss-feeds, mise a jour horaire).
+// On garde uniquement les deux domaines pertinents pour LinkedIn :
+// - IA : labs officiels + presse specialisee
+// - Cybersecurite : sources narratives (pas les advisories techniques bruts)
 
 const RSS_SOURCES: Array<{ name: string; url: string; domain: RawArticle["domain"] }> = [
 
   // ── IA : Labs officiels ────────────────────────────────────────────────────
-  // Flux communautaires scraped toutes les heures (pas de flux RSS officiel)
+  // Flux communautaires (Anthropic, Meta, Mistral n'ont pas de RSS officiel)
   { domain: "IA", name: "Anthropic News",     url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml" },
   { domain: "IA", name: "Anthropic Research", url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_research.xml" },
-  { domain: "IA", name: "Meta AI Blog",        url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_meta_ai.xml" },
-  { domain: "IA", name: "Mistral AI News",     url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_mistral.xml" },
-  { domain: "IA", name: "Cursor Blog",         url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_cursor.xml" },
-  // Flux RSS officiels directs
-  { domain: "IA", name: "OpenAI Blog",         url: "https://openai.com/news/rss.xml" },
-  { domain: "IA", name: "Google DeepMind",     url: "https://deepmind.google/blog/rss.xml" },
-  { domain: "IA", name: "Google AI Blog",      url: "https://blog.google/technology/ai/rss/" },
-  { domain: "IA", name: "Hugging Face",        url: "https://huggingface.co/blog/feed.xml" },
-  { domain: "IA", name: "Groq Blog",           url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_groq.xml" },
+  { domain: "IA", name: "Meta AI Blog",       url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_meta_ai.xml" },
+  { domain: "IA", name: "Mistral AI",         url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_mistral.xml" },
+  { domain: "IA", name: "Cursor Blog",        url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_cursor.xml" },
+  { domain: "IA", name: "Groq Blog",          url: "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_groq.xml" },
+  // Flux RSS officiels
+  { domain: "IA", name: "OpenAI Blog",        url: "https://openai.com/news/rss.xml" },
+  { domain: "IA", name: "Google DeepMind",    url: "https://deepmind.google/blog/rss.xml" },
+  { domain: "IA", name: "Google AI Blog",     url: "https://blog.google/technology/ai/rss/" },
+  { domain: "IA", name: "Hugging Face",       url: "https://huggingface.co/blog/feed.xml" },
 
   // ── IA : Presse specialisee ────────────────────────────────────────────────
-  { domain: "IA", name: "VentureBeat AI",      url: "https://venturebeat.com/category/ai/feed/" },
-  { domain: "IA", name: "The Verge AI",        url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml" },
-  { domain: "IA", name: "Ars Technica AI",     url: "https://feeds.arstechnica.com/arstechnica/technology-lab" },
-  { domain: "IA", name: "MIT Tech Review AI",  url: "https://www.technologyreview.com/feed/" },
-  { domain: "IA", name: "TechCrunch AI",       url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
-  { domain: "IA", name: "The Decoder",         url: "https://the-decoder.com/feed/" },
+  { domain: "IA", name: "VentureBeat AI",     url: "https://venturebeat.com/category/ai/feed/" },
+  { domain: "IA", name: "The Verge AI",       url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml" },
+  { domain: "IA", name: "MIT Tech Review AI", url: "https://www.technologyreview.com/feed/" },
+  { domain: "IA", name: "TechCrunch AI",      url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
+  { domain: "IA", name: "The Decoder",        url: "https://the-decoder.com/feed/" },
+  { domain: "IA", name: "Ars Technica AI",    url: "https://feeds.arstechnica.com/arstechnica/technology-lab" },
 
-  // ── Web Dev ────────────────────────────────────────────────────────────────
-  { domain: "Web Dev", name: "CSS Tricks",         url: "https://css-tricks.com/feed/" },
-  { domain: "Web Dev", name: "Smashing Magazine",  url: "https://www.smashingmagazine.com/feed/" },
-  { domain: "Web Dev", name: "web.dev (Google)",   url: "https://web.dev/feed.xml" },
-  { domain: "Web Dev", name: "React Blog",         url: "https://react.dev/rss.xml" },
-  { domain: "Web Dev", name: "TypeScript Blog",    url: "https://devblogs.microsoft.com/typescript/feed/" },
-  { domain: "Web Dev", name: "Node.js Blog",       url: "https://nodejs.org/en/feed/blog.xml" },
-  { domain: "Web Dev", name: "Hacker News (Top)",  url: "https://hnrss.org/frontpage" },
-
-  // ── DevOps ─────────────────────────────────────────────────────────────────
-  { domain: "DevOps", name: "Kubernetes Blog",     url: "https://kubernetes.io/feed.xml" },
-  { domain: "DevOps", name: "Docker Blog",         url: "https://www.docker.com/blog/feed/" },
-  { domain: "DevOps", name: "GitHub Blog",         url: "https://github.blog/feed/" },
-  { domain: "DevOps", name: "AWS DevOps Blog",     url: "https://aws.amazon.com/blogs/devops/feed/" },
-  { domain: "DevOps", name: "Martin Fowler",       url: "https://martinfowler.com/feed.atom" },
-  { domain: "DevOps", name: "The New Stack",       url: "https://thenewstack.io/feed/" },
-
-  // ── DevSecOps / Securite ───────────────────────────────────────────────────
-  { domain: "DevSecOps", name: "Schneier on Security", url: "https://www.schneier.com/feed/atom/" },
-  { domain: "DevSecOps", name: "CISA Advisories",      url: "https://www.cisa.gov/cybersecurity-advisories/feed" },
-  { domain: "DevSecOps", name: "Krebs on Security",    url: "https://krebsonsecurity.com/feed/" },
-  { domain: "DevSecOps", name: "Recorded Future",      url: "https://www.recordedfuture.com/feed" },
-  { domain: "DevSecOps", name: "The Hacker News",      url: "https://feeds.feedburner.com/TheHackersNews" },
-  { domain: "DevSecOps", name: "Snyk Security",        url: "https://snyk.io/blog/feed/" },
+  // ── Cybersecurite : sources narratives uniquement ──────────────────────────
+  // On evite les flux d'advisories bruts (CISA, NVD) qui listent des CVE
+  // sans contexte — pas engageants sur LinkedIn. On garde les sources qui
+  // racontent une histoire : incident reel, technique d'attaque, analyse.
+  { domain: "Cybersecurite", name: "Krebs on Security",  url: "https://krebsonsecurity.com/feed/" },
+  { domain: "Cybersecurite", name: "Schneier on Security",url: "https://www.schneier.com/feed/atom/" },
+  { domain: "Cybersecurite", name: "The Hacker News",    url: "https://feeds.feedburner.com/TheHackersNews" },
+  { domain: "Cybersecurite", name: "Recorded Future",    url: "https://www.recordedfuture.com/feed" },
+  { domain: "Cybersecurite", name: "Snyk Security",      url: "https://snyk.io/blog/feed/" },
+  { domain: "Cybersecurite", name: "Dark Reading",       url: "https://www.darkreading.com/rss.xml" },
+  { domain: "Cybersecurite", name: "Wired Security",     url: "https://www.wired.com/feed/category/security/latest/rss" },
 ];
 
 // --- Mots-cles par domaine ---------------------------------------------------
@@ -80,35 +68,38 @@ const KEYWORDS: Record<RawArticle["domain"], string[]> = {
     "artificial intelligence", "machine learning", "deep learning", "generative ai",
     "computer vision", "natural language processing", "nlp", "ai agent", "agentic",
     "openai", "anthropic", "deepmind", "hugging face", "stability ai", "midjourney",
-    "copilot", "cursor", "chatgpt", "o1", "o3", "claude code",
+    "copilot", "cursor", "chatgpt", "o1", "o3", "claude code", "groq",
     "benchmark", "reasoning", "inference", "training", "gpu", "tpu",
   ],
-  "Web Dev": [
-    "react", "typescript", "javascript", "angular", "vue", "next.js", "nuxt",
-    "css", "html", "web component", "browser api", "web assembly", "wasm",
-    "node.js", "bun", "deno", "rest api", "graphql", "websocket",
-    "performance", "accessibility", "a11y", "seo", "core web vitals",
-    "frontend", "backend", "fullstack", "framework", "library", "bundler",
-    "vite", "webpack", "turbopack", "tailwind", "shadcn",
-  ],
-  "DevOps": [
-    "kubernetes", "docker", "container", "ci/cd", "pipeline", "github actions",
-    "terraform", "ansible", "helm", "gitops", "argocd", "flux",
-    "microservices", "service mesh", "istio", "prometheus", "grafana",
-    "cloud native", "aws", "azure", "gcp", "infrastructure as code",
-    "deployment", "scalability", "observability", "monitoring", "logging",
-    "platform engineering", "devex", "developer experience",
-  ],
-  "DevSecOps": [
-    "vulnerability", "cve", "security advisory", "patch", "exploit", "zero-day",
-    "owasp", "penetration testing", "pen test", "sast", "dast", "sca",
-    "supply chain attack", "dependency", "secret scanning", "sbom",
-    "authentication", "authorization", "oauth", "jwt", "csrf", "xss", "sql injection",
-    "encryption", "tls", "ssl", "certificate", "pki",
-    "compliance", "soc2", "gdpr", "iso 27001", "nist",
-    "devsecops", "shift left", "security by design", "threat modeling",
+  "Cybersecurite": [
+    // Incidents et attaques (angle narratif = LinkedIn-friendly)
+    "hack", "breach", "data leak", "ransomware", "attack", "malware", "phishing",
+    "exploit", "zero-day", "vulnerability", "cve", "backdoor", "botnet",
+    "supply chain", "social engineering", "identity theft", "fraud",
+    // IA et cybersecurite (intersection tres engageante)
+    "ai security", "llm security", "prompt injection", "jailbreak", "adversarial",
+    "deepfake", "synthetic media", "ai threat", "ai attack", "model poisoning",
+    // Tendances et analyses
+    "cybersecurity", "threat intelligence", "incident response", "nation state",
+    "apt", "espionage", "surveillance", "privacy", "data protection",
+    "encryption", "authentication", "mfa", "password", "credential",
   ],
 };
+
+// --- Filtre narratif cybersecurite -------------------------------------------
+// On exclut les articles purement techniques ou generiques qui ne raconteraient
+// pas une histoire engageante sur LinkedIn (patch notes, advisories, etc.)
+
+const CYBER_BORING_PATTERNS = [
+  /^(patch|advisory|update|release|cve-\d{4})/i,
+  /multiple vulnerabilities/i,
+  /security update for/i,
+  /^(aa\d{2}|ta\d{2})/i,   // format des advisories CISA
+];
+
+function isCyberEngaging(title: string): boolean {
+  return !CYBER_BORING_PATTERNS.some((pattern) => pattern.test(title.trim()));
+}
 
 // --- Deduplication via fichier JSON ------------------------------------------
 
@@ -139,24 +130,19 @@ function getDomain(
   title: string,
   summary: string
 ): RawArticle["domain"] | null {
-  // Pour les sources dediees (hors Hacker News et Ars Technica qui sont generiques),
-  // on accepte directement l'article si son domaine correspond.
-  const genericSources = ["Hacker News (Top)", "Ars Technica AI", "MIT Tech Review AI"];
-  if (!genericSources.includes(source.name)) {
-    const text = `${title} ${summary}`.toLowerCase();
-    const keywords = KEYWORDS[source.domain];
-    if (keywords.some((kw) => text.includes(kw))) return source.domain;
-    // Pour les sources dediees, on garde quand meme si le titre seul est pertinent
-    // (certains articles n'ont pas d'extrait dans le flux RSS)
-    if (summary.length < 50) return source.domain;
-    return null;
-  }
-  // Pour les sources generiques, on cherche le bon domaine par mots-cles
   const text = `${title} ${summary}`.toLowerCase();
-  for (const domain of ["IA", "Web Dev", "DevOps", "DevSecOps"] as const) {
-    if (KEYWORDS[domain].some((kw) => text.includes(kw))) return domain;
-  }
-  return null;
+
+  // Pour les sources dediees : on verifie juste que le contenu correspond
+  // au domaine attendu (evite les articles hors-sujet sur des blogs generiques)
+  const keywords = KEYWORDS[source.domain];
+  const isRelevant = keywords.some((kw) => text.includes(kw)) || summary.length < 50;
+
+  if (!isRelevant) return null;
+
+  // Filtre narratif supplementaire pour la cybersecurite
+  if (source.domain === "Cybersecurite" && !isCyberEngaging(title)) return null;
+
+  return source.domain;
 }
 
 // --- Fetch de tous les flux RSS ----------------------------------------------
@@ -173,7 +159,7 @@ export async function fetchAllFeeds(): Promise<RawArticle[]> {
 
   for (const source of RSS_SOURCES) {
     try {
-      console.log(`[FETCH] ${source.domain.padEnd(10)} ${source.name}...`);
+      console.log(`[FETCH] ${source.domain.padEnd(14)} ${source.name}...`);
       const feed = await parser.parseURL(source.url);
 
       for (const item of feed.items ?? []) {
