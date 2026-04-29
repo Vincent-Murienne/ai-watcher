@@ -2,7 +2,7 @@ name: AI Watcher - Veille Technologique
 
 on:
   schedule:
-    - cron: "0 */6 * * *"   # toutes les 6h (00h, 06h, 12h, 18h UTC)
+    - cron: "0 8 * * *"   # tous les jours a 8h UTC (9h Paris heure d'hiver)
   workflow_dispatch:          # declenchement manuel depuis l'onglet Actions
 
 jobs:
