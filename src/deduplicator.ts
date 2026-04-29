@@ -136,7 +136,7 @@ Retourne UNIQUEMENT un JSON valide :
 {
   "title": "Titre synthetique qui capture l'essentiel de l'evenement",
   "summary": "Resume unifie en 4-6 phrases. Integre les angles complementaires de chaque source. Cite les sources les plus importantes.",
-  "linkedinPost": "Post LinkedIn complet citant explicitement les differentes sources (ex: 'selon VentureBeat et The Verge...'). Meme structure : accroche, contexte, points cles en tirets, question ou opinion, hashtags.",
+  "linkedinPost": "Post LinkedIn long et developpe citant toutes les sources. STRUCTURE : 1) Accroche forte 1-2 lignes (pas Je ni le nom de lentreprise) 2) saut de ligne 3) La news en 2-3 phrases avec contexte strategique en citant les sources (ex: selon VentureBeat et The Verge) 4) saut de ligne 5) La phrase exacte Voici ce que ca signifie concretement : suivie de 4-6 points detailles en tirets 6) saut de ligne 7) Analyse prospective en 1-2 paragraphes 8) saut de ligne 9) Question ouverte pour engager 10) saut de ligne 11) La phrase exacte Pour plus d informations : suivie des URLs des sources separees par des sauts de ligne 12) saut de ligne 13) 5-6 hashtags. Longueur 250-350 mots.",
   "category": "La categorie la plus appropriee parmi : Nouveau modele | Mise a jour | Nouvelle technique | Outil | Recherche | Industrie | Reglementation",
   "importance": "haute si au moins une source la juge haute, sinon la plus haute des importances du groupe"
 }

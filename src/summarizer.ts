@@ -8,8 +8,8 @@ export interface SummarizedArticle {
   link: string;
   source: string;
   pubDate: string;
-  summary: string;        // resume factuel court (3-5 phrases)
-  linkedinPost: string;   // post LinkedIn pret a copier-coller
+  summary: string;        // resume factuel court
+  linkedinPost: string;   // post LinkedIn long, pret a copier-coller
   category: string;
   importance: "haute" | "moyenne" | "faible";
 }
@@ -19,30 +19,29 @@ export interface SummarizedArticle {
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const GROQ_MODEL   = "llama-3.3-70b-versatile";
 
-// Free tier Groq : 6 000 TPM sur llama-3.3-70b-versatile
-// Chaque appel consomme environ 500-700 tokens (prompt + reponse)
-// Pause de 12s => ~5 articles/min => ~3 000 tokens/min => bien sous la limite
+// Free tier : 6 000 TPM sur llama-3.3-70b-versatile
+// Pause de 12s => ~5 articles/min => ~3 000 tokens/min => sous la limite
 const DELAY_BETWEEN_ARTICLES_MS = 12_000;
 
 // --- Prompt systeme ----------------------------------------------------------
 
-const SYSTEM_PROMPT = `Tu es a la fois un expert en veille technologique IA et un redacteur LinkedIn reconnu pour ses posts engageants.
+const SYSTEM_PROMPT = `Tu es a la fois un expert en veille technologique et un redacteur LinkedIn reconnu pour ses posts longs, engageants et tres partages.
 Ta mission : analyser un article tech et produire deux contenus distincts.
 
 Retourne UNIQUEMENT un JSON valide avec cette structure exacte :
 {
-  "summary": "Resume factuel en 3-5 phrases. Explique QUOI (la nouveaute), POURQUOI c'est important, et QUEL IMPACT sur l'ecosysteme IA.",
-  "linkedinPost": "Post LinkedIn complet, pret a publier. Structure : accroche percutante (1-2 lignes), saut de ligne, contexte et enjeux, saut de ligne, 3-4 points cles en liste avec tirets, saut de ligne, conviction personnelle ou question ouverte pour susciter les commentaires, saut de ligne, 4-5 hashtags pertinents. Ton : expert mais accessible, direct, pas de jargon inutile. Longueur : 150-250 mots.",
+  "summary": "Resume factuel en 3-5 phrases. Explique QUOI (la nouveaute), POURQUOI c'est important, et QUEL IMPACT sur l'ecosysteme tech.",
+  "linkedinPost": "Post LinkedIn long et developpe. STRUCTURE OBLIGATOIRE : 1) Accroche forte en 1-2 lignes (phrase choc ou stat surprenante, ne pas commencer par Je ou le nom de l'entreprise) 2) saut de ligne 3) La vraie news en 2-3 phrases avec le contexte strategique 4) saut de ligne 5) La phrase exacte Voici ce que ca signifie concretement : suivie de 4-6 points detailles avec tirets (chaque point = 1-2 phrases concretes) 6) saut de ligne 7) 1-2 paragraphes de prise de position ou analyse prospective sur l'impact metier 8) saut de ligne 9) Question ouverte pour engager les commentaires 10) saut de ligne 11) La phrase exacte Pour plus d informations : suivi de l URL de l article 12) saut de ligne 13) 5-6 hashtags. Longueur totale : 250-350 mots. Ton : expert mais accessible, direct, concret, sans jargon inutile.",
   "category": "Une seule valeur parmi : Nouveau modele | Mise a jour | Nouvelle technique | Outil | Recherche | Industrie | Reglementation",
   "importance": "Une seule valeur parmi : haute | moyenne | faible"
 }
 
-Criteres d'importance :
-- haute : rupture technologique, nouveau modele majeur, annonce d'un acteur cle (OpenAI, Anthropic, Google, Meta)
-- moyenne : mise a jour significative, nouvelle technique prometteuse, nouveau produit IA
-- faible : mise a jour mineure, article d'opinion, news secondaire
+Criteres d importance :
+- haute : rupture technologique, nouveau modele majeur, annonce d un acteur cle (OpenAI, Anthropic, Google, Meta)
+- moyenne : mise a jour significative, nouvelle technique prometteuse, nouveau produit
+- faible : mise a jour mineure, article d opinion, news secondaire
 
-Reponds TOUJOURS en francais. Ne retourne RIEN d'autre que le JSON. Aucun texte avant ou apres.`;
+Reponds TOUJOURS en francais. Ne retourne RIEN d autre que le JSON. Aucun texte avant ou apres.`;
 
 // --- Appel API Groq avec retry automatique -----------------------------------
 
@@ -55,8 +54,8 @@ async function callGroq(userPrompt: string, attempt = 1): Promise<string> {
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
-      max_tokens: 600,        // augmente legerement pour le post LinkedIn
-      temperature: 0.4,       // un peu plus de creativite pour le post LinkedIn
+      max_tokens: 800,        // augmente pour les posts plus longs
+      temperature: 0.5,       // un peu de creativite pour varier le style
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -65,14 +64,11 @@ async function callGroq(userPrompt: string, attempt = 1): Promise<string> {
     }),
   });
 
-  // Rate limit -> on attend le delai indique par l'API puis on reessaie
   if (response.status === 429) {
     if (attempt > 5) throw new Error("Rate limit depasse apres 5 tentatives");
 
     const body = await response.json() as { error?: { message?: string } };
     const match = body.error?.message?.match(/try again in ([0-9.]+)s/);
-    // On prend le delai suggere par l'API + 1s de marge.
-    // Si l'API ne precise pas de delai, on attend 15s (assez pour recharger le quota TPM).
     const waitMs = match ? Math.ceil(parseFloat(match[1]) * 1000) + 1_000 : 15_000;
 
     console.log(`[GROQ] Rate limit - attente ${(waitMs / 1000).toFixed(1)}s (tentative ${attempt}/5)...`);
@@ -95,17 +91,16 @@ async function callGroq(userPrompt: string, attempt = 1): Promise<string> {
 // --- Resume d'un article -----------------------------------------------------
 
 async function summarizeArticle(article: RawArticle): Promise<SummarizedArticle> {
-  // 400 caracteres suffisent pour que le LLM comprenne le sujet de l'article.
-  // Reduire l'extrait est le levier le plus efficace contre le rate limit TPM :
-  // chaque caractere en moins = moins de tokens input = plus de marge par minute.
   const excerpt = article.summary.slice(0, 400) || "(aucun extrait, base-toi sur le titre)";
 
+  // On passe l'URL dans le prompt pour que le LLM puisse l'inclure
+  // directement dans la phrase "Pour plus d'informations : [URL]"
   const userPrompt = `Source : ${article.source}
 Titre : ${article.title}
 URL : ${article.link}
 Extrait : ${excerpt}
 
-Genere le JSON avec le resume factuel et le post LinkedIn.`;
+Genere le JSON. L URL a utiliser dans le post LinkedIn est : ${article.link}`;
 
   const rawText = await callGroq(userPrompt);
 
@@ -116,10 +111,22 @@ Genere le JSON avec le resume factuel et le post LinkedIn.`;
   } catch {
     parsed = {
       summary:      article.summary.slice(0, 300) || article.title,
-      linkedinPost: article.title,
+      linkedinPost: `${article.title}\n\nPour plus d'informations : ${article.link}`,
       category:     "Industrie",
       importance:   "faible",
     };
+  }
+
+  // Securite : si le LLM a oublie d'inclure l'URL, on l'ajoute avant les hashtags
+  let post = parsed.linkedinPost;
+  if (!post.includes(article.link)) {
+    // On insere "Pour plus d'informations" avant les hashtags s'il y en a
+    const hashtagIndex = post.lastIndexOf("#");
+    const insertBefore = hashtagIndex > 0 ? hashtagIndex : post.length;
+    post =
+      post.slice(0, insertBefore).trimEnd() +
+      `\n\nPour plus d'informations : ${article.link}\n\n` +
+      post.slice(insertBefore);
   }
 
   return {
@@ -128,7 +135,7 @@ Genere le JSON avec le resume factuel et le post LinkedIn.`;
     source:       article.source,
     pubDate:      article.pubDate,
     summary:      parsed.summary,
-    linkedinPost: parsed.linkedinPost,
+    linkedinPost: post,
     category:     parsed.category,
     importance:   (parsed.importance as "haute" | "moyenne" | "faible") ?? "faible",
     domain:       article.domain,
