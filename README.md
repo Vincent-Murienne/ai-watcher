@@ -1,7 +1,7 @@
 # AI Watcher - Veille Technologique IA Automatisee
 
 Surveille automatiquement 13 sources specialisees IA (Anthropic, OpenAI, DeepMind, VentureBeat, The Verge...),
-genere des resumes synthetiques via Groq (Llama 3.3 70B, gratuit), et envoie un email formate toutes les 6 heures
+genere des resumes synthetiques via Groq (Llama 3.3 70B, gratuit), et envoie un email formate tous les jours à 9h
 sans aucun doublon. Aucune dependance native, fonctionne sur Windows, Mac et Linux.
 
 
@@ -35,8 +35,6 @@ sans aucun doublon. Aucune dependance native, fonctionne sur Windows, Mac et Lin
 
     npm install
 
-Aucune compilation C++ requise. L'installation doit se terminer sans erreur.
-
 
 ### Etape 2 - Obtenir la cle API Groq (gratuit)
 
@@ -48,7 +46,7 @@ Aucune compilation C++ requise. L'installation doit se terminer sans erreur.
 ### Etape 3 - Configurer l'App Password Gmail
 
 Le projet utilise Gmail SMTP pour envoyer les emails. Il ne faut PAS utiliser
-ton mot de passe Gmail habituel, mais un "App Password" dedie.
+le mot de passe Gmail habituel, mais un "App Password" dedie.
 
 Comment l'obtenir :
 
@@ -85,7 +83,7 @@ articles IA sont detectes. Verifier le dossier Spam si l'email n'arrive pas.
 ## Deploiement GitHub Actions (automatisation)
 
 Une fois le test local valide, le projet peut tourner automatiquement via GitHub Actions
-sans laisser ton ordinateur allume.
+sans laisser l'ordinateur allume.
 
 ### 1 - Creer un depot GitHub (prive recommande)
 
@@ -102,10 +100,10 @@ sans laisser ton ordinateur allume.
 
 Dans le depot GitHub : Settings > Secrets and variables > Actions > New repository secret
 
-Ajouter ces 3 secrets :
+Ajouter les 3 secrets :
 
-    GROQ_API_KEY      -> ta cle Groq
-    GMAIL_USER        -> ton adresse Gmail
+    GROQ_API_KEY      -> la cle Groq
+    GMAIL_USER        -> l'adresse Gmail utilisée
     GMAIL_APP_PASS    -> l'App Password (16 caracteres)
 
 ### 4 - Verifier le fonctionnement
@@ -113,7 +111,7 @@ Ajouter ces 3 secrets :
 Aller dans l'onglet "Actions" du depot > selectionner "AI Watcher" > "Run workflow"
 pour declencher un premier run manuel et verifier que tout fonctionne.
 
-Ensuite le script tourne automatiquement toutes les 6 heures (00h, 06h, 12h, 18h UTC).
+Ensuite le script tourne automatiquement toutes les jours à 9h.
 
 
 ## Personnalisation
@@ -170,7 +168,7 @@ en dessous des limites gratuites.
 ## Depannage
 
 "Invalid login" Gmail
-  Verifier que tu utilises bien l'App Password (16 caracteres) et non le mot de passe Gmail.
+  Verifier qu'on utilise bien l'App Password (16 caracteres) et non le mot de passe Gmail.
   La validation en 2 etapes doit etre activee sur le compte.
 
 Aucun email recu
