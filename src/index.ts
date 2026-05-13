@@ -4,6 +4,7 @@ import "dotenv/config";
 import { fetchAllFeeds, deduplicateAndSave } from "./watcher.js";
 import { summarizeAll } from "./summarizer.js";
 import { groupAndMerge } from "./deduplicator.js";
+import { generateImagesForGroups } from "./imageGenerator.js";
 import { sendEmail } from "./mailer.js";
 
 async function main(): Promise<void> {
@@ -24,12 +25,12 @@ async function main(): Promise<void> {
   const storePath = path.join(dataDir, "seen.json");
 
   // -- 1. Fetch RSS ------------------------------------------------------------
-  console.log("\n[1/5] Recuperation des flux RSS...");
+  console.log("\n[1/6] Recuperation des flux RSS...");
   const rawArticles = await fetchAllFeeds();
   console.log(`      ${rawArticles.length} articles recuperes au total`);
 
   // -- 2. Deduplication URL (evite de retraiter les articles deja vus) ---------
-  console.log("\n[2/5] Deduplication par URL...");
+  console.log("\n[2/6] Deduplication par URL...");
   const newArticles = deduplicateAndSave(storePath, rawArticles);
   if (newArticles.length === 0) {
     console.log("      Aucune nouveaute. Fin du script.");
@@ -38,12 +39,12 @@ async function main(): Promise<void> {
   console.log(`      ${newArticles.length} nouveaux articles a traiter`);
 
   // -- 3. Resumes via Groq -----------------------------------------------------
-  console.log("\n[3/5] Generation des resumes (Groq API)...");
+  console.log("\n[3/6] Generation des resumes (Groq API)...");
   const summarized = await summarizeAll(newArticles);
   console.log(`      ${summarized.length} resumes generes`);
 
   // -- 4. Regroupement semantique (meme evenement = 1 seule fiche) -------------
-  console.log("\n[4/5] Regroupement semantique des doublons...");
+  console.log("\n[4/6] Regroupement semantique des doublons...");
   const grouped = await groupAndMerge(summarized);
   const fused   = summarized.length - grouped.length;
   if (fused > 0) {
@@ -52,8 +53,12 @@ async function main(): Promise<void> {
     console.log(`      Aucun doublon semantique detecte (${grouped.length} fiches)`);
   }
 
-  // -- 5. Envoi email ----------------------------------------------------------
-  console.log("\n[5/5] Envoi de l'email de veille...");
+  // -- 5. Generation des images (optionnel, necessite OPENAI_API_KEY) ----------
+  console.log("\n[5/6] Generation des images illustratives...");
+  await generateImagesForGroups(grouped);
+
+  // -- 6. Envoi email ----------------------------------------------------------
+  console.log("\n[6/6] Envoi de l'email de veille...");
   await sendEmail(grouped);
 
   console.log("\nVeille terminee avec succes !");

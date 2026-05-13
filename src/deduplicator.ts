@@ -10,6 +10,7 @@ export interface ArticleGroup {
   category: string;
   importance: "haute" | "moyenne" | "faible";
   domain: SummarizedArticle["domain"];
+  imageUrl?: string;                  // image DALL-E 3 generee (optionnel)
   sources: Array<{                    // toutes les sources qui couvrent cet evenement
     name: string;
     link: string;

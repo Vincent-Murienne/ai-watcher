@@ -35,13 +35,6 @@ const RSS_SOURCES: Array<{ name: string; url: string; domain: RawArticle["domain
   { domain: "IA", name: "Google AI Blog",     url: "https://blog.google/technology/ai/rss/" },
   { domain: "IA", name: "Hugging Face",       url: "https://huggingface.co/blog/feed.xml" },
 
-  // ── IA : Presse specialisee ────────────────────────────────────────────────
-  { domain: "IA", name: "VentureBeat AI",     url: "https://venturebeat.com/category/ai/feed/" },
-  { domain: "IA", name: "The Verge AI",       url: "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml" },
-  { domain: "IA", name: "MIT Tech Review AI", url: "https://www.technologyreview.com/feed/" },
-  { domain: "IA", name: "TechCrunch AI",      url: "https://techcrunch.com/category/artificial-intelligence/feed/" },
-  { domain: "IA", name: "The Decoder",        url: "https://the-decoder.com/feed/" },
-  { domain: "IA", name: "Ars Technica AI",    url: "https://feeds.arstechnica.com/arstechnica/technology-lab" },
 
   // ── Cybersecurite : sources narratives uniquement ──────────────────────────
   // On evite les flux d'advisories bruts (CISA, NVD) qui listent des CVE

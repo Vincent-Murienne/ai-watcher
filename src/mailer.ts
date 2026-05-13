@@ -68,6 +68,16 @@ function sourcesBlock(group: ArticleGroup): string {
   return `${badge}<div style="margin-top:6px;">${links}</div>`;
 }
 
+// --- Bloc image generee (DALL-E 3) -------------------------------------------
+
+function imageBlock(imageUrl: string | undefined): string {
+  if (!imageUrl) return "";
+  return `
+    <div style="margin-bottom:18px;border-radius:8px;overflow:hidden;">
+      <img src="${imageUrl}" alt="Illustration generee" style="width:100%;max-height:300px;object-fit:cover;display:block;" />
+    </div>`;
+}
+
 // --- Carte d'un groupe -------------------------------------------------------
 
 function articleCard(group: ArticleGroup): string {
@@ -84,6 +94,9 @@ function articleCard(group: ArticleGroup): string {
         <span style="background:#eff6ff;color:#1d4ed8;font-size:11px;padding:3px 8px;border-radius:4px;">${group.category}</span>
       </div>
       <div style="margin-bottom:12px;">${sourcesBlock(group)}</div>
+
+      <!-- Image generee -->
+      ${imageBlock(group.imageUrl)}
 
       <!-- Titre -->
       <h3 style="margin:0 0 10px 0;font-size:16px;font-weight:700;color:#111827;line-height:1.4;">
@@ -203,7 +216,7 @@ function buildEmailHTML(groups: ArticleGroup[], date: string): string {
   <!-- Footer -->
   <div style="margin-top:24px;padding-top:16px;border-top:1px solid #e2e8f0;text-align:center;color:#94a3b8;font-size:11px;line-height:2;">
     <p>Genere par Tech Watch · Groq Llama 3.3 70B</p>
-    <p>IA : Anthropic · OpenAI · DeepMind · Meta AI · Mistral · HuggingFace · VentureBeat · The Verge · MIT Tech Review · TechCrunch · The Decoder</p>
+    <p>IA : Anthropic · OpenAI · Google DeepMind · Google AI · Meta AI · Mistral · HuggingFace · Cursor · Groq</p>
     <p>Cyber : Krebs on Security · Schneier · The Hacker News · Recorded Future · Snyk · Dark Reading · Wired Security</p>
   </div>
 
